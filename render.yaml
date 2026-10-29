@@ -1,0 +1,9 @@
+services:
+    - type: web
+    name: codenine-whatsapp-bot
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    envVars:
+            - key: VERIFY_TOKEN
+        value: codenine123
