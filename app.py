@@ -6,21 +6,18 @@ from dotenv import load_dotenv
 load_dotenv()
 app = Flask(__name__)
 
-# WhatsApp Config - you will fill these from Meta
+# WhatsApp Config
 VERIFY_TOKEN = os.getenv("VERIFY_TOKEN", "codenine123")
-WHATSAPP_TOKEN = os.getenv("WHATSAPP_TOKEN")
-PHONE_NUMBER_ID = os.getenv("PHONE_NUMBER_ID")
-
+WHATSAPP_TOKEN = os.getenv("WHATSAPP_TOKEN", "EAAUsgVV5ZAiMBS9D3rBie1N6qFsspjoIielMuL9tZCnkvslKrhZCokBuQQ2sagdIlopIYGXculWAob02ZAbLZBzUNXAacmx89AWigPC9LImMucMNBZBZAouYoSNttk436d3lpwzDYIRxIPqJDUWlftA5r6ZB5hIdTA2C6vv8rRpeZBsHA4x8SAZCVbPwW38MYRdZA3qrLUXEmAi271Vbzv6ChmZBfGZAqYiTiLx5sa028sQonJEtNpY1qdKf6Rvvkkt8DdsNEeJJ6Xj2055KEVy3TZCI68pcMb")
+PHONE_NUMBER_ID = os.getenv("PHONE_NUMBER_ID", "1447454081781641")
 
 @app.route('/')
 def home():
     return render_template('index.html')
 
-
-# === WHATSAPP WEBHOOK ===
+# === VERIFY WEBHOOK (GET) ===
 @app.route('/webhook', methods=['GET'])
 def verify_webhook():
-    # Meta verification
     mode = request.args.get("hub.mode")
     token = request.args.get("hub.verify_token")
     challenge = request.args.get("hub.challenge")
@@ -28,47 +25,60 @@ def verify_webhook():
         return challenge, 200
     return "Verification failed", 403
 
-
+# === RECEIVE MESSAGES (POST) - ONLY ONE POST! ===
 @app.route('/webhook', methods=['POST'])
-def handle_message():
+def webhook():
     data = request.get_json()
     print("Incoming:", data)
-
     try:
-        # Extract message
-        if data['object'] == 'whatsapp_business_account':
+        if data.get('object') == 'whatsapp_business_account':
             for entry in data['entry']:
                 for change in entry['changes']:
                     value = change['value']
                     if 'messages' in value:
-                        message = value['messages'][0]
-                        from_number = message['from']
-                        msg_body = message['text']['body'].lower()
+                        msg = value['messages'][0]
+                        from_number = msg['from']
+                        msg_body = msg.get('text', {}).get('body', '').lower()
 
-                        # BOT LOGIC FOR CODENINE
                         reply = get_bot_reply(msg_body)
                         send_whatsapp_message(from_number, reply)
     except Exception as e:
         print(f"Error: {e}")
-
     return "OK", 200
 
-
+# === BOT LOGIC ===
 def get_bot_reply(msg):
-    if "hi" in msg or "hello" in msg or "hey" in msg:
-        return "🚀 Welcome to CodeNine.dev! I'm CodeNine Bot.\n\nWhat do you need?\n1️⃣ New Website\n2️⃣ E-commerce Store\n3️⃣ Website Redesign\n4️⃣ Talk to Walter\n\nReply with number (1-4)"
-    elif "1" in msg:
-        return "🔥 NEW WEBSITE — Let's go!\nWe build fast, modern sites from R2500.\nWhat's your business name & budget? (e.g. 'Salon, R4000')"
-    elif "2" in msg or "shop" in msg:
-        return "🛒 E-COMMERCE — We got you!\nShopify / Custom store with payments.\nFrom R5500. Send your products list!"
-    elif "3" in msg:
-        return "🎨 REDESIGN — We make old sites sexy again!\nSend me your current link and I'll audit free!"
+    MENU = """👋 Welcome to CodeNiNE - Built to Complete
+www.codenine.dev | Founder Walter
+
+Reply with number:
+1️⃣ Website Prices
+2️⃣ Bot Prices
+3️⃣ E-commerce
+4️⃣ Custom Trading Bot
+5️⃣ See ALL Catalogs
+6️⃣ Talk to Human"""
+
+    if "hi" in msg or "hello" in msg or "hey" in msg or "menu" in msg:
+        return MENU
+    elif msg.strip() == "1":
+        return "🌐 WEBSITE CATALOG\nSTARTER R1,500\nSTANDARD R3,500 ⭐ MOST POPULAR\nPRO R5,500\nFLEET R8,500+\nE-COM R10,000+\n\nReply ORDER + your business name"
+    elif msg.strip() == "2":
+        return "🤖 BOT CATALOG\nStarter R1,800\nStandard R3,800 ⭐\nPro R6,500\nFleet R9,500+\nE-comm AI R12,000+\n\nReply ORDER BOT"
+    elif msg.strip() == "3":
+        return "🛒 E-COMMERCE\nStarter R4,500\nBusiness R7,500 ⭐\nPro R10,000+\nCart + PayFast + WhatsApp Orders"
+    elif msg.strip() == "4":
+        return "🛠️ CUSTOM TRADING BOT\nSend strategy PDF/video\nWe code MT4/MT5/TradingView\nFrom R3,000\nQuote in 2hrs"
+    elif msg.strip() == "5":
+        return "📚 FULL CODE NINE CATALOG\nWebsites + Bots + E-com + Booking Systems + Fleet\nwww.codenine.dev\nBuilt to Complete"
+    elif msg.strip() == "6":
+        return "👨‍💻 Connecting you to Walter... Send your question, he replies in 10 mins.\nOr email: walter@codenine.dev"
     elif "price" in msg or "cost" in msg:
-        return "💰 CodeNine Pricing:\n• Starter Site: R2500\n• Business Pro: R4500\n• E-commerce: R5500+\n\nAll include hosting setup + domain help.\nWant a custom quote? Type your business type!"
+        return "💰 CodeNine Pricing:\n• Starter Site: R2,500\n• Business Pro: R4,500\n• E-commerce: R5,500+\n\nAll include hosting setup + domain help.\n" + MENU
     else:
-        return "Got it! 👊 Walter will reply soon.\nIn meantime, see our work: https://codenine-website.onrender.com\n\nType 'Hi' to restart bot."
+        return MENU
 
-
+# === SEND MESSAGE ===
 def send_whatsapp_message(to, text):
     if not WHATSAPP_TOKEN:
         print("No token set - skipping send")
@@ -78,7 +88,6 @@ def send_whatsapp_message(to, text):
     payload = {"messaging_product": "whatsapp", "to": to, "type": "text", "text": {"body": text}}
     r = requests.post(url, headers=headers, json=payload)
     print(f"Sent: {r.status_code} - {r.text}")
-
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 10000)))
