@@ -6,16 +6,19 @@ from dotenv import load_dotenv
 load_dotenv()
 app = Flask(__name__)
 
-# WhatsApp Config
+# Config
 VERIFY_TOKEN = os.getenv("VERIFY_TOKEN", "codenine123")
-WHATSAPP_TOKEN = os.getenv("WHATSAPP_TOKEN", "EAAUsgVV5ZAiMBS9D3rBie1N6qFsspjoIielMuL9tZCnkvslKrhZCokBuQQ2sagdIlopIYGXculWAob02ZAbLZBzUNXAacmx89AWigPC9LImMucMNBZBZAouYoSNttk436d3lpwzDYIRxIPqJDUWlftA5r6ZB5hIdTA2C6vv8rRpeZBsHA4x8SAZCVbPwW38MYRdZA3qrLUXEmAi271Vbzv6ChmZBfGZAqYiTiLx5sa028sQonJEtNpY1qdKf6Rvvkkt8DdsNEeJJ6Xj2055KEVy3TZCI68pcMb")
+WHATSAPP_TOKEN = os.getenv("WHATSAPP_TOKEN",
+                           "EAAUsgVV5ZAiMBS9D3rBie1N6qFsspjoIielMuL9tZCnkvslKrhZCokBuQQ2sagdIlopIYGXculWAob02ZAbLZBzUNXAacmx89AWigPC9LImMucMNBZBZAouYoSNttk436d3lpwzDYIRxIPqJDUWlftA5r6ZB5hIdTA2C6vv8rRpeZBsHA4x8SAZCVbPwW38MYRdZA3qrLUXEmAi271Vbzv6ChmZBfGZAqYiTiLx5sa028sQonJEtNpY1qdKf6Rvvkkt8DdsNEeJJ6Xj2055KEVy3TZCI68pcMb")
 PHONE_NUMBER_ID = os.getenv("PHONE_NUMBER_ID", "1447454081781641")
+BOT_TOKEN = os.getenv("BOT_TOKEN", "9236352164:AAFN3jFd3GuCp3bfmTrRF1PqbbHg5VbF2IY")  # <-- TELEGRAM
+
 
 @app.route('/')
 def home():
     return render_template('index.html')
 
-# === VERIFY WEBHOOK (GET) ===
+
 @app.route('/webhook', methods=['GET'])
 def verify_webhook():
     mode = request.args.get("hub.mode")
@@ -25,12 +28,13 @@ def verify_webhook():
         return challenge, 200
     return "Verification failed", 403
 
-# === RECEIVE MESSAGES (POST) - ONLY ONE POST! ===
+
 @app.route('/webhook', methods=['POST'])
 def webhook():
     data = request.get_json()
     print("Incoming:", data)
     try:
+        # === WHATSAPP ===
         if data.get('object') == 'whatsapp_business_account':
             for entry in data['entry']:
                 for change in entry['changes']:
@@ -39,14 +43,23 @@ def webhook():
                         msg = value['messages'][0]
                         from_number = msg['from']
                         msg_body = msg.get('text', {}).get('body', '').lower()
-
                         reply = get_bot_reply(msg_body)
                         send_whatsapp_message(from_number, reply)
+
+        # === TELEGRAM ===
+        elif 'message' in data or 'edited_message' in data:
+            msg_data = data.get('message') or data.get('edited_message')
+            chat_id = msg_data['chat']['id']
+            text = msg_data.get('text', '').lower()
+            print(f"Telegram from {chat_id}: {text}")
+            reply = get_bot_reply(text)
+            send_telegram_message(chat_id, reply)
+
     except Exception as e:
         print(f"Error: {e}")
     return "OK", 200
 
-# === BOT LOGIC ===
+
 def get_bot_reply(msg):
     MENU = """👋 Welcome to CodeNiNE - Built to Complete
 www.codenine.dev | Founder Walter
@@ -59,7 +72,7 @@ Reply with number:
 5️⃣ See ALL Catalogs
 6️⃣ Talk to Human"""
 
-    if "hi" in msg or "hello" in msg or "hey" in msg or "menu" in msg:
+    if "hi" in msg or "hello" in msg or "hey" in msg or "menu" in msg or "/start" in msg or "start" in msg:
         return MENU
     elif msg.strip() == "1":
         return "🌐 WEBSITE CATALOG\nSTARTER R1,500\nSTANDARD R3,500 ⭐ MOST POPULAR\nPRO R5,500\nFLEET R8,500+\nE-COM R10,000+\n\nReply ORDER + your business name"
@@ -78,16 +91,26 @@ Reply with number:
     else:
         return MENU
 
-# === SEND MESSAGE ===
+
 def send_whatsapp_message(to, text):
     if not WHATSAPP_TOKEN:
-        print("No token set - skipping send")
         return
     url = f"https://graph.facebook.com/v20.0/{PHONE_NUMBER_ID}/messages"
     headers = {"Authorization": f"Bearer {WHATSAPP_TOKEN}", "Content-Type": "application/json"}
     payload = {"messaging_product": "whatsapp", "to": to, "type": "text", "text": {"body": text}}
     r = requests.post(url, headers=headers, json=payload)
-    print(f"Sent: {r.status_code} - {r.text}")
+    print(f"Sent WA: {r.status_code}")
+
+
+def send_telegram_message(chat_id, text):
+    if not BOT_TOKEN:
+        print("No BOT_TOKEN")
+        return
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+    payload = {"chat_id": chat_id, "text": text}
+    r = requests.post(url, json=payload)
+    print(f"Sent TG: {r.status_code} - {r.text}")
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 10000)))
