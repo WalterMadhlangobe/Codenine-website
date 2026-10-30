@@ -23,17 +23,16 @@ Built to Complete/style
 
 Reply with number (1-6) or type MENU"""
 
-
 def get_bot_reply(msg):
     if not msg:
         return MENU
-
+    
     m = msg.lower().strip()
-
+    
     # Common triggers
     if m in ["hi", "hello", "hey", "menu", "/start", "start", "sawubona", "dumela"]:
         return MENU
-
+    
     if m == "1":
         return (
             "🌐 *WEBSITE CATALOG:*\n\n"
@@ -43,7 +42,7 @@ def get_bot_reply(msg):
             "ADD: Logo R750, Domain R500/yr, Hosting R300/yr\n\n"
             "Type MENU for main menu"
         )
-
+    
     if m == "2":
         return (
             "🤖 *BOT CATALOG:*\n\n"
@@ -53,7 +52,7 @@ def get_bot_reply(msg):
             "Works on Whatsapp, Telegram, Instagram, Website\n\n"
             "Type MENU for main menu"
         )
-
+    
     if m == "3":
         return (
             "🛒 *E-COMMERCE CATALOG:*\n\n"
@@ -62,7 +61,7 @@ def get_bot_reply(msg):
             "FLEET R6,500 - Full management\n\n"
             "Type MENU"
         )
-
+    
     if m == "4":
         return (
             "⚙️ *CUSTOM TRADING BOTS:*\n\n"
@@ -72,7 +71,7 @@ def get_bot_reply(msg):
             "Talk to Walter for custom quote\n\n"
             "Type MENU"
         )
-
+    
     if m == "5":
         return (
             "📂 *FULL CODENINE CATALOG:*\n\n"
@@ -85,7 +84,7 @@ def get_bot_reply(msg):
             "Visit: codenine.dev\n\n"
             "Type MENU"
         )
-
+    
     if m == "6":
         return (
             "📞 *TALK TO FOUNDER:*\n\n"
@@ -95,10 +94,9 @@ def get_bot_reply(msg):
             "Email: walter@codenine.dev\n\n"
             "Type MENU"
         )
-
+    
     # Default if user types random
     return f"You said: {msg}\n\n{MENU}"
-
 
 # ================= SEND FUNCTIONS =================
 def send_whatsapp_message(to, text):
@@ -111,7 +109,6 @@ def send_whatsapp_message(to, text):
     r = requests.post(url, headers=headers, json=payload)
     print(f"WA -> {r.status_code}")
 
-
 def send_telegram_message(chat_id, text):
     if not BOT_TOKEN:
         print("No BOT_TOKEN")
@@ -121,22 +118,20 @@ def send_telegram_message(chat_id, text):
     r = requests.post(url, json=payload)
     print(f"TG -> {r.status_code} {r.text[:100]}")
 
-
 # ================= ROUTES =================
 @app.route("/")
 def home():
     return "CodeNiNE Bot Live - Telegram + Whatsapp - ACTIVE"
-
 
 @app.route("/telegram", methods=["GET", "POST"])
 def telegram_webhook():
     """THIS FIXES YOUR 404 ERROR"""
     if request.method == "GET":
         return "Telegram webhook is ACTIVE! Go send /start in Telegram", 200
-
+    
     data = request.get_json()
     print(f"Telegram incoming: {data}")
-
+    
     try:
         if data and "message" in data:
             chat_id = data["message"]["chat"]["id"]
@@ -145,9 +140,8 @@ def telegram_webhook():
             send_telegram_message(chat_id, reply)
     except Exception as e:
         print(f"Telegram Error: {e}")
-
+    
     return "ok", 200
-
 
 @app.route("/webhook", methods=["GET", "POST"])
 def whatsapp_webhook():
@@ -159,10 +153,10 @@ def whatsapp_webhook():
         if mode == "subscribe" and token == VERIFY_TOKEN:
             return challenge, 200
         return "Verification failed", 403
-
+    
     data = request.get_json()
     print(f"WhatsApp incoming: {data}")
-
+    
     try:
         if data and "entry" in data:
             entry = data["entry"][0]["changes"][0]["value"]
@@ -174,9 +168,8 @@ def whatsapp_webhook():
                 send_whatsapp_message(from_num, reply)
     except Exception as e:
         print(f"WA Error: {e}")
-
+    
     return "ok", 200
-
 
 # ================= RUN =================
 if __name__ == "__main__":
