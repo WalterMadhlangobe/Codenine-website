@@ -8,9 +8,7 @@ app = Flask(__name__)
 def privacy_policy():
     return "<h1>Privacy Policy - CodeNiNE</h1><p>We use WhatsApp data only for customer support via Walter AI. No data sharing with third parties. Contact: info@codeninedev.co.za</p>"
 
-@app.route('/')
-def home():
-    return "CodeNiNE Bot Live - Telegram + Whatsapp - ACTIVE"
+
 
 # ================= CONFIG =================
 WHATSAPP_TOKEN = os.getenv("WHATSAPP_TOKEN")
