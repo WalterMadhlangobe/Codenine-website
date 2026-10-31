@@ -6,7 +6,8 @@ app = Flask(__name__)
 
 # ================= CONFIG =================
 WHATSAPP_TOKEN = os.getenv("WHATSAPP_TOKEN")
-PHONE_NUMBER_ID = os.getenv("PHONE_NUMBER_ID")
+# FIX: Support both names
+PHONE_NUMBER_ID = os.getenv("WHATSAPP_PHONE_ID") or os.getenv("PHONE_NUMBER_ID")
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 VERIFY_TOKEN = os.getenv("VERIFY_TOKEN", "codenine123")
 
@@ -29,7 +30,6 @@ def get_bot_reply(msg):
     
     m = msg.lower().strip()
     
-    # Common triggers
     if m in ["hi", "hello", "hey", "menu", "/start", "start", "sawubona", "dumela"]:
         return MENU
     
@@ -42,7 +42,6 @@ def get_bot_reply(msg):
             "ADD: Logo R750, Domain R500/yr, Hosting R300/yr\n\n"
             "Type MENU for main menu"
         )
-    
     if m == "2":
         return (
             "🤖 *BOT CATALOG:*\n\n"
@@ -52,7 +51,6 @@ def get_bot_reply(msg):
             "Works on Whatsapp, Telegram, Instagram, Website\n\n"
             "Type MENU for main menu"
         )
-    
     if m == "3":
         return (
             "🛒 *E-COMMERCE CATALOG:*\n\n"
@@ -61,7 +59,6 @@ def get_bot_reply(msg):
             "FLEET R6,500 - Full management\n\n"
             "Type MENU"
         )
-    
     if m == "4":
         return (
             "⚙️ *CUSTOM TRADING BOTS:*\n\n"
@@ -71,7 +68,6 @@ def get_bot_reply(msg):
             "Talk to Walter for custom quote\n\n"
             "Type MENU"
         )
-    
     if m == "5":
         return (
             "📂 *FULL CODENINE CATALOG:*\n\n"
@@ -84,7 +80,6 @@ def get_bot_reply(msg):
             "Visit: codenine.dev\n\n"
             "Type MENU"
         )
-    
     if m == "6":
         return (
             "📞 *TALK TO FOUNDER:*\n\n"
@@ -94,20 +89,18 @@ def get_bot_reply(msg):
             "Email: walter@codenine.dev\n\n"
             "Type MENU"
         )
-    
-    # Default if user types random
     return f"You said: {msg}\n\n{MENU}"
 
 # ================= SEND FUNCTIONS =================
 def send_whatsapp_message(to, text):
     if not WHATSAPP_TOKEN or not PHONE_NUMBER_ID:
-        print("No WA TOKEN")
+        print(f"Missing WA creds: TOKEN={bool(WHATSAPP_TOKEN)} ID={PHONE_NUMBER_ID}")
         return
-    url = f"https://graph.facebook.com/v19.0/{PHONE_NUMBER_ID}/messages"
+    url = f"https://graph.facebook.com/v20.0/{PHONE_NUMBER_ID}/messages"
     headers = {"Authorization": f"Bearer {WHATSAPP_TOKEN}", "Content-Type": "application/json"}
     payload = {"messaging_product": "whatsapp", "to": to, "type": "text", "text": {"body": text}}
     r = requests.post(url, headers=headers, json=payload)
-    print(f"WA -> {r.status_code}")
+    print(f"WA -> {to} {r.status_code} {r.text[:200]}")
 
 def send_telegram_message(chat_id, text):
     if not BOT_TOKEN:
@@ -116,7 +109,7 @@ def send_telegram_message(chat_id, text):
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
     payload = {"chat_id": chat_id, "text": text}
     r = requests.post(url, json=payload)
-    print(f"TG -> {r.status_code} {r.text[:100]}")
+    print(f"TG -> {r.status_code}")
 
 # ================= ROUTES =================
 @app.route("/")
@@ -125,13 +118,10 @@ def home():
 
 @app.route("/telegram", methods=["GET", "POST"])
 def telegram_webhook():
-    """THIS FIXES YOUR 404 ERROR"""
     if request.method == "GET":
         return "Telegram webhook is ACTIVE! Go send /start in Telegram", 200
-    
     data = request.get_json()
     print(f"Telegram incoming: {data}")
-    
     try:
         if data and "message" in data:
             chat_id = data["message"]["chat"]["id"]
@@ -140,36 +130,44 @@ def telegram_webhook():
             send_telegram_message(chat_id, reply)
     except Exception as e:
         print(f"Telegram Error: {e}")
-    
+    return "ok", 200
+
+def handle_whatsapp_verification():
+    token = request.args.get("hub.verify_token")
+    challenge = request.args.get("hub.challenge")
+    if token == VERIFY_TOKEN:
+        return challenge, 200
+    return "Verification failed", 403
+
+def handle_whatsapp_message():
+    data = request.get_json()
+    print(f"WhatsApp incoming: {data}")
+    try:
+        if data and "entry" in data:
+            for entry in data["entry"]:
+                for change in entry.get("changes", []):
+                    value = change.get("value", {})
+                    if "messages" in value:
+                        msg_obj = value["messages"][0]
+                        from_num = msg_obj["from"]
+                        text = msg_obj.get("text", {}).get("body", "")
+                        reply = get_bot_reply(text)
+                        send_whatsapp_message(from_num, reply)
+    except Exception as e:
+        print(f"WA Error: {e}")
     return "ok", 200
 
 @app.route("/webhook", methods=["GET", "POST"])
-def whatsapp_webhook():
-    """Your WhatsApp webhook - KEPT AS IS"""
+def whatsapp_webhook_old():
     if request.method == "GET":
-        mode = request.args.get("hub.mode")
-        token = request.args.get("hub.verify_token")
-        challenge = request.args.get("hub.challenge")
-        if mode == "subscribe" and token == VERIFY_TOKEN:
-            return challenge, 200
-        return "Verification failed", 403
-    
-    data = request.get_json()
-    print(f"WhatsApp incoming: {data}")
-    
-    try:
-        if data and "entry" in data:
-            entry = data["entry"][0]["changes"][0]["value"]
-            if "messages" in entry:
-                msg_obj = entry["messages"][0]
-                from_num = msg_obj["from"]
-                text = msg_obj.get("text", {}).get("body", "")
-                reply = get_bot_reply(text)
-                send_whatsapp_message(from_num, reply)
-    except Exception as e:
-        print(f"WA Error: {e}")
-    
-    return "ok", 200
+        return handle_whatsapp_verification()
+    return handle_whatsapp_message()
+
+@app.route("/webhook/whatsapp", methods=["GET", "POST"])
+def whatsapp_webhook_new():
+    if request.method == "GET":
+        return handle_whatsapp_verification()
+    return handle_whatsapp_message()
 
 # ================= RUN =================
 if __name__ == "__main__":
