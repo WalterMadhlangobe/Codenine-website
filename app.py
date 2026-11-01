@@ -32,7 +32,7 @@ def send_telegram_message(chat_id,text):
 def home(): return "CodeNiNE Bot Live - ACTIVE"
 @app.route("/privacy-policy")
 def privacy_policy():
-    return """<html><head><title>Privacy Policy - CodeNiNE</title></head><body style="font-family:Arial;padding:40px;max-width:800px;margin:auto;"><h1>Privacy Policy - CodeNiNE</h1><p><b>Effective Date:</b> Nov 2026</p><p>CodeNiNE respects privacy. We collect phone number, name, messages to provide bot services.</p><h2>Use</h2><p>To reply inquiries, provide catalog, connect to founder Walter.</p><h2>No Sharing</h2><p>We don't sell/share data. Data stays on Render secure servers.</p><h2>Contact</h2><p>Email: walter@codenine.dev | WhatsApp: +27 81 211 6710</p><p>© 2026 CodeNiNE</p></body></html>""",200
+    return """<html><head><title>Privacy Policy - CodeNiNE</title></head><body style="font-family:Arial;padding:40px;max-width:800px;margin:auto;"><h1>Privacy Policy - CodeNiNE</h1><p><b>Effective Date:</b> Nov 2026</p><p>CodeNiNE respects privacy. We collect phone number, name, messages to provide bot services.</p><h2>Use</h2><p>To reply inquiries, provide catalog, connect to founder Walter.</p><h2>No Sharing</h2><p>We don't sell/share data. Data stays on Render secure servers.</p><h2>Contact</h2><p>Email: walter@codenine.dev | WhatsApp: +27 81 211 6710 | Bot: +27 69 107 7549</p><p>© 2026 CodeNiNE</p></body></html>""",200
 @app.route("/telegram",methods=["GET","POST"])
 def telegram_webhook():
     if request.method=="GET": return "Telegram webhook ACTIVE",200
